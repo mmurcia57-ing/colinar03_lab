@@ -1,0 +1,7 @@
+numpy
+matplotlib
+Pillow
+scikit-image
+jupyter
+nbconvert
+pytest
