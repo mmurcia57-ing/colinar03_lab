@@ -7,3 +7,4 @@ data/output/*
 !data/output/.gitkeep
 deliverables/*.html
 deliverables/*.log
+tmp/
