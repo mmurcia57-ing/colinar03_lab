@@ -1,51 +1,36 @@
-"""Genera dos escenas reproducibles y las contamina con la misma anomalía."""
+"""Prepara tres fotografías reales y las contamina con la misma anomalía.
+
+Las imágenes proceden de `skimage.data` (dominio público / CC0):
+- astronaut: Eileen Collins, NASA (dominio público).
+- coffee: taza de café, Rachel Michetti (CC0).
+- camera: cameraman, versión CC0 incluida en scikit-image.
+"""
 
 from pathlib import Path
 
 import numpy as np
-from PIL import Image, ImageDraw
-
+from PIL import Image
+from skimage import data, transform
 
 ROOT = Path(__file__).resolve().parents[1]
+SIZE = 256
+DENSITY = 0.10
+SOURCES = {1: data.astronaut, 2: data.coffee, 3: data.camera}
 
 
-def scene_one(size: int = 128) -> np.ndarray:
-    image = np.zeros((size, size, 3), dtype=np.uint8)
-    image[:, :, :] = [155, 205, 235]
-    image[78:, :, :] = [80, 105, 80]
-    draw = ImageDraw.Draw(Image.fromarray(image))
-    draw.rectangle((12, 36, 48, 85), fill=(180, 145, 105))
-    draw.polygon([(8, 36), (30, 16), (53, 36)], fill=(100, 65, 50))
-    draw.rectangle((25, 58, 36, 85), fill=(55, 70, 75))
-    draw.rectangle((66, 28, 112, 85), fill=(220, 190, 145))
-    draw.polygon([(60, 28), (89, 7), (118, 28)], fill=(95, 75, 65))
-    draw.rectangle((77, 50, 90, 64), fill=(60, 125, 175))
-    draw.line((0, 108, 128, 96), fill=(230, 220, 175), width=5)
-    return np.asarray(draw._image).copy()
+def prepare(image: np.ndarray, size: int = SIZE) -> np.ndarray:
+    """Reescala a size x size y devuelve uint8."""
+    resized = transform.resize(image, (size, size), anti_aliasing=True)
+    return np.rint(resized * 255).astype(np.uint8)
 
 
-def scene_two(size: int = 128) -> np.ndarray:
-    y, x = np.mgrid[0:size, 0:size]
-    image = np.zeros((size, size, 3), dtype=np.uint8)
-    image[:, :, 0] = np.clip(30 + y * 0.35, 0, 255)
-    image[:, :, 1] = np.clip(110 + y * 0.45, 0, 255)
-    image[:, :, 2] = np.clip(180 - y * 0.55, 0, 255)
-    pil = Image.fromarray(image)
-    draw = ImageDraw.Draw(pil)
-    draw.polygon([(0, 88), (28, 45), (55, 88)], fill=(55, 105, 100))
-    draw.polygon([(35, 92), (78, 30), (128, 92)], fill=(75, 125, 95))
-    draw.ellipse((84, 12, 112, 40), fill=(250, 225, 125))
-    for cx, cy, r in [(15, 105, 15), (43, 110, 18), (108, 107, 20)]:
-        draw.ellipse((cx-r, cy-r, cx+r, cy+r), fill=(35, 80, 55))
-    return np.asarray(pil)
-
-
-def add_impulses(image: np.ndarray, seed: int, density: float = 0.035) -> tuple[np.ndarray, np.ndarray]:
+def add_impulses(image: np.ndarray, seed: int, density: float = DENSITY) -> tuple[np.ndarray, np.ndarray]:
+    """Ruido sal y pimienta: una fracción `density` de píxeles pasa a 0 o 255."""
     rng = np.random.default_rng(seed)
     mask = rng.random(image.shape[:2]) < density
+    values = np.where(rng.random(mask.sum()) < 0.5, 255, 0).astype(np.uint8)
     corrupted = image.copy()
-    salt = rng.random(mask.sum()) < 0.5
-    corrupted[mask] = np.where(salt[:, None], 255, 0).astype(np.uint8)
+    corrupted[mask] = values[:, None] if image.ndim == 3 else values
     return corrupted, mask
 
 
@@ -56,8 +41,8 @@ def save(name: str, image: np.ndarray) -> None:
 
 
 def main() -> None:
-    originals = [scene_one(), scene_two()]
-    for index, original in enumerate(originals, 1):
+    for index, source in SOURCES.items():
+        original = prepare(source())
         corrupted, mask = add_impulses(original, seed=2026 + index)
         save(f"original_{index}", original)
         save(f"corrupted_{index}", corrupted)
@@ -66,4 +51,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
