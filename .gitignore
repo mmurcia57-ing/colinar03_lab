@@ -8,3 +8,5 @@ data/output/*
 deliverables/*.html
 deliverables/*.log
 tmp/
+deliverables/*.zip
+.DS_Store

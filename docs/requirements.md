@@ -22,7 +22,7 @@ Fuente: guía UNIR `colinar03_lab.docx`, adjunta a la conversación de trabajo.
 | Requisito o criterio | Artefacto | Evidencia verificable |
 |---|---|---|
 | Describir el problema | Notebook, sección 1 | Tipo de anomalía, hipótesis y motivación |
-| Dos imágenes con la misma anomalía | `data/original/`, `data/corrupted/`, notebook | Dos pares con parámetros de corrupción comunes |
+| Dos imágenes con la misma anomalía | `data/original_N/`, `data/corrupted_N/`, notebook | Tres fotografías reales con el mismo proceso de corrupción |
 | Algoritmo no ad hoc | `src/anomaly_removal.py`, notebook | Mismos parámetros y misma función para ambos pares |
 | Operación principal propia | `src/anomaly_removal.py` | Recorrido de vecindad, detector y restaurador implementados sin `medianBlur`/equivalente |
 | Ejecución paso a paso | Notebook ejecutado | Celdas de carga, detección, mapa, restauración y resultados |

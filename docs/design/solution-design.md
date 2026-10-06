@@ -19,20 +19,22 @@ La elección es adecuada porque la anomalía es contextual: un píxel extremo no
 
 ## 3. Algoritmo propuesto
 
-Para cada píxel y canal:
+Por canal, con parámetros fijos para todas las imágenes (`src/anomaly_removal.py`):
 
-1. Extraer una ventana cuadrada impar alrededor del píxel.
-2. Excluir el centro y calcular mediana local y desviación absoluta mediana (MAD). La MAD aporta una escala robusta que no queda dominada por unos pocos impulsos.
-3. Marcar el centro como candidato si su diferencia frente a la mediana supera `max(k_mad * 1.4826 * MAD, tau_min)` y además es compatible con una saturación impulsiva o con un residuo extremo respecto a la vecindad.
-4. Calcular un contraste local con gradientes simples. En un borde fuerte, exigir una evidencia más estricta para no convertir el borde en anomalía.
-5. Restaurar solo los candidatos: usar los vecinos no marcados, ponderados por similitud a la mediana local y distancia espacial. Si no hay suficientes vecinos válidos, usar la mediana local.
-6. Repetir una segunda pasada opcional con el mapa de la primera pasada fijado, para tratar grupos pequeños de impulsos sin propagar valores corruptos.
+1. **Candidatos:** píxeles con valor entre 0 y 10 o entre 245 y 255.
+2. **Decisión contextual** para cada candidato:
+   - ventana adaptativa de 3×3 a 9×9 hasta reunir al menos 4 vecinos *fiables* (no saturados);
+   - **región saturada real** si tiene al menos 3 vecinos con su misma saturación en 3×3 y al menos 8 en 5×5 (la esquina de un objeto cumple ambas condiciones): se conserva;
+   - **impulso** si su valor queda fuera de [mín − 20, máx + 20] de los vecinos fiables; si no, se conserva.
+3. **Restauración** solo de los impulsos: media de los vecinos no marcados, con pesos espaciales gaussianos multiplicados por pesos de rango respecto a la mediana local.
 
-La operación principal propia es el recorrido de ventanas, la estadística robusta, el criterio contextual y la restauración ponderada. No se usará `cv2.medianBlur`, `scipy.ndimage.median_filter` ni una función equivalente como solución.
+Una primera versión usaba un umbral proporcional a la MAD (identificador de Hampel). En fotografías reales con textura, la MAD inflaba el umbral y se escapaba más del 30 % de los impulsos (recall 0.65 en *astronaut*). Calcular el contexto solo con vecinos fiables, junto con la envolvente local, resolvió el problema (recall 0.89–0.98 y PSNR por encima de la mediana de librería en todos los casos probados).
+
+La operación principal propia es el recorrido de ventanas, la decisión contextual y la restauración ponderada. No se usan `cv2.medianBlur`, `scipy.ndimage.median_filter` ni ninguna función equivalente como solución.
 
 ## 4. Generalización y validación
 
-El algoritmo recibirá solamente la imagen, tamaño de ventana y parámetros definidos antes de ver los resultados de cada imagen. Se aplicará sin cambios a dos imágenes diferentes. Como las imágenes limpias se conservan antes de inyectar la anomalía, se podrá medir:
+El algoritmo recibirá solamente la imagen, tamaño de ventana y parámetros definidos antes de ver los resultados de cada imagen. Se aplica sin cambios a tres fotografías reales (dos en color y una en gris) y a densidades de ruido del 5 % al 30 %. Como las imágenes limpias se conservan antes de inyectar la anomalía, se podrá medir:
 
 - detección: precision, recall y F1 sobre la máscara de píxeles alterados;
 - restauración: PSNR, SSIM y error absoluto medio frente a la imagen limpia;
